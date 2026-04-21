@@ -149,3 +149,22 @@ end)
 -- 初期起動
 startAntiTrip()
 print("Anti-Trip & Animation Eraser Loaded (Centered UI)!")
+-- =================================================
+-- ProximityPrompt 0秒化（一瞬でつかめる）コード
+-- =================================================
+
+local function makeFast(obj)
+    if obj:IsA("ProximityPrompt") then
+        obj.HoldDuration = 0
+    end
+end
+
+-- 1. ゲーム起動時に、今あるプロンプトをすべて0秒にする
+for _, v in pairs(workspace:GetDescendants()) do
+    makeFast(v)
+end
+
+-- 2. これから新しく出現するプロンプトも、出た瞬間に0秒にする
+workspace.DescendantAdded:Connect(makeFast)
+
+print("Fast Prompt Loaded: すべての長押しを0秒にしました")

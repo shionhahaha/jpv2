@@ -1,5 +1,5 @@
 -- =================================================
--- でーもんさいきょーｗｗ (All-in-One Edition)
+-- でーもんさいきょーｗｗ (TP & Base Auto-Detect)
 -- =================================================
 
 local Players = game:GetService("Players")
@@ -8,6 +8,40 @@ local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local myBaseFolder = nil
+local isEnabled = true
+
+-- ==================== UI作成 ====================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AntiTripGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 140, 0, 60)
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -20, 1, -20)
+button.Position = UDim2.new(0, 10, 0, 10)
+button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+button.Text = "でーもんさいきょーｗｗ"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.TextScaled = true
+button.Font = Enum.Font.GothamBold
+button.Parent = frame
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 6)
+buttonCorner.Parent = button
 
 -- ==================== 1. アンチ転倒 & アニメ消去 ====================
 local function killAllAnimations(char)
@@ -20,24 +54,17 @@ local function killAllAnimations(char)
 end
 
 RunService.Stepped:Connect(function()
+    if not isEnabled then return end
     local char = player.Character
     if not char then return end
     local root = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not (root and hum) then return end
 
-    -- 転倒防止
+    -- 転倒防止（GettingUp状態を強制）
     local state = hum:GetState()
     if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown or state == Enum.HumanoidStateType.PlatformStanding then
         hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-    end
-    
-    -- 空中制御
-    if not (hum.Jump or UserInputService:IsKeyDown(Enum.KeyCode.Space)) then
-        if state ~= Enum.HumanoidStateType.Freefall then
-            root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, -0.8, root.AssemblyLinearVelocity.Z)
-        end
-        root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     end
     
     -- アニメーション停止
@@ -63,31 +90,47 @@ local function initializeMyBase()
         end
     end
     myBaseFolder = closest
-    if myBaseFolder then print("ベース特定成功: " .. myBaseFolder.Name) end
+    if myBaseFolder then print("ベース特定完了: " .. myBaseFolder.Name) end
 end
 
 -- ==================== 3. TP戻り処理 ====================
 local function teleportAndBack()
+    if not isEnabled then return end
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    -- 登録されたベースからターゲットを探す
     local cash = myBaseFolder and myBaseFolder:FindFirstChild("Cash")
     local target = cash and cash:FindFirstChild("structure base home")
 
     if target and root then
         local oldPos = root.CFrame
         -- TP
-        root.CFrame = CFrame.new(target.Position + Vector3.new(0, target.Size.Y/2 + 4, 0))
+        root.CFrame = CFrame.new(target.Position + Vector3.new(0, target.Size.Y/2 + 5, 0))
         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+        
         task.wait(1)
+        
         -- 戻る
         root.CFrame = oldPos
         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
     else
-        warn("ベース未登録、またはパーツがありません。")
+        warn("TP失敗: ベース未登録、またはパーツが見つかりません。")
     end
 end
 
--- ==================== 4. プロンプト適用 ====================
+-- ==================== 4. イベント接続 ====================
+button.MouseButton1Click:Connect(function()
+    isEnabled = not isEnabled
+    if isEnabled then
+        button.Text = "でーもんさいきょーｗｗ"
+        button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    else
+        button.Text = "OFF"
+        button.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+    end
+end)
+
 local function apply(obj)
     if obj:IsA("ProximityPrompt") then
         obj.HoldDuration = 0
@@ -95,9 +138,9 @@ local function apply(obj)
     end
 end
 
--- 実行開始
+-- 実行
 initializeMyBase()
 for _, v in pairs(workspace:GetDescendants()) do apply(v) end
 workspace.DescendantAdded:Connect(apply)
 
-print("すべて完了！自分のベースに立ってから実行してね。")
+print("Script Loaded: ノックバックあり設定で起動しました。")

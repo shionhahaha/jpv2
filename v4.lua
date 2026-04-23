@@ -39,6 +39,17 @@ button.TextScaled = true
 button.Font = Enum.Font.GothamBold
 button.Parent = frame
 
+-- 【追加】基地へTPするボタン
+local tpButton = Instance.new("TextButton")
+tpButton.Size = UDim2.new(1, -20, 0, 35)
+tpButton.Position = UDim2.new(0, 10, 0, 55)
+tpButton.BackgroundColor3 = Color3.fromRGB(0, 100, 255)
+tpButton.Text = "基地へ戻る"
+tpButton.TextColor3 = Color3.new(1, 1, 1)
+tpButton.TextScaled = true
+tpButton.Font = Enum.Font.GothamBold
+tpButton.Parent = frame
+
 local buttonCorner = Instance.new("UICorner")
 buttonCorner.CornerRadius = UDim.new(0, 6)
 buttonCorner.Parent = button
@@ -92,6 +103,42 @@ local function initializeMyBase()
     myBaseFolder = closest
     if myBaseFolder then print("ベース特定完了: " .. myBaseFolder.Name) end
 end
+
+-- =================================================
+-- 基地へ移動する関数 (teleportToBase)
+-- =================================================
+local function teleportToBase()
+    -- 1. 自分のキャラクターの胴体(HumanoidRootPart)があるかチェック
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    -- 2. スクリプトが特定した「myBaseFolder」の中にある「home」の場所を探す
+    -- myBaseFolder -> Cashフォルダ -> structure base home というパーツ
+    local cash = myBaseFolder and myBaseFolder:FindFirstChild("Cash")
+    local target = cash and cash:FindFirstChild("structure base home")
+
+    -- 3. 自分とターゲット（基地）の両方が見つかったら実行
+    if target and root then
+        -- 座標(CFrame)を書き換えて一瞬で移動
+        -- Positionに「Vector3.new(0, 5, 0)」を足して、少し浮いた位置に着地させる
+        root.CFrame = CFrame.new(target.Position + Vector3.new(0, 5, 0))
+        
+        -- 移動した瞬間に吹っ飛んだりしないよう、速度をリセット(0)にする
+        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        
+        print("基地へテレポートしました！")
+    else
+        -- 基地が見つからなかった場合のエラー表示
+        warn("TP失敗: 自分の基地(myBaseFolder)が見つからないか、homeパーツがありません。")
+    end
+end
+
+-- 【追加】基地ボタンを押した時の処理
+tpButton.MouseButton1Click:Connect(function()
+    teleportToBase()
+end)
+
+
 
 -- ==================== 3. TP戻り処理 ====================
 local function teleportAndBack()

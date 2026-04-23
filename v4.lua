@@ -1,58 +1,89 @@
 -- =================================================
--- でーもんさいきょーｗｗ (TP & Base Auto-Detect)
+-- ⚡ DEMON ULTIMATE EDITION (Advanced UI) ⚡
 -- =================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local myBaseFolder = nil
 local isEnabled = true
 
--- ==================== UI作成 ====================
+-- ==================== MODERN UI SYSTEM ====================
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AntiTripGui"
+screenGui.Name = "DemonUltraGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
+-- メインフレーム（半透明のぼかし背景風）
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 140, 0, 60)
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Size = UDim2.new(0, 200, 0, 150)
+frame.Position = UDim2.new(0.5, -100, 0.5, -75)
+frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = frame
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 15)
+frameCorner.Parent = frame
 
+-- 外枠の発光エフェクト
+local frameStroke = Instance.new("UIStroke")
+frameStroke.Thickness = 2
+frameStroke.Color = Color3.fromRGB(45, 45, 45)
+frameStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+frameStroke.Parent = frame
+
+-- タイトルラベル
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "でーもんさいきょーｗｗ🤓🤓🤓"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBlack
+title.TextSize = 16
+title.Parent = frame
+
+--- ボタンデザイン関数
+local function applyModernStyle(btn, baseColor)
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0, 10)
+    
+    btn.BackgroundColor3 = baseColor
+    btn.Font = Enum.Font.GothamBold
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.TextSize = 14
+    btn.AutoButtonColor = false
+
+    -- ホバー時のアニメーション
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = baseColor:Lerp(Color3.new(1,1,1), 0.15), Size = UDim2.new(1, -15, 0, 38)}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = baseColor, Size = UDim2.new(1, -20, 0, 35)}):Play()
+    end)
+end
+
+-- メインボタン (Toggle)
 local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, -20, 1, -20)
-button.Position = UDim2.new(0, 10, 0, 10)
-button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-button.Text = "でーもんさいきょーｗｗ"
-button.TextColor3 = Color3.new(1, 1, 1)
-button.TextScaled = true
-button.Font = Enum.Font.GothamBold
+button.Name = "Toggle"
+button.Size = UDim2.new(1, -20, 0, 35)
+button.Position = UDim2.new(0, 10, 0, 45)
+button.Text = "モード:オン"
 button.Parent = frame
+applyModernStyle(button, Color3.fromRGB(46, 204, 113))
 
--- 【追加】基地へTPするボタン
+-- 基地戻りボタン (TP)
 local tpButton = Instance.new("TextButton")
+tpButton.Name = "TPBase"
 tpButton.Size = UDim2.new(1, -20, 0, 35)
-tpButton.Position = UDim2.new(0, 10, 0, 55)
-tpButton.BackgroundColor3 = Color3.fromRGB(0, 100, 255)
-tpButton.Text = "基地へ戻る"
-tpButton.TextColor3 = Color3.new(1, 1, 1)
-tpButton.TextScaled = true
-tpButton.Font = Enum.Font.GothamBold
+tpButton.Position = UDim2.new(0, 10, 0, 95)
+tpButton.Text = "ベースtp"
 tpButton.Parent = frame
-
-local buttonCorner = Instance.new("UICorner")
-buttonCorner.CornerRadius = UDim.new(0, 6)
-buttonCorner.Parent = button
+applyModernStyle(tpButton, Color3.fromRGB(52, 152, 219))
 
 -- ==================== 1. アンチ転倒 & アニメ消去 ====================
 local function killAllAnimations(char)
@@ -84,15 +115,16 @@ RunService.Stepped:Connect(function()
     killAllAnimations(char)
 end)
 
--- ==================== 2. ベースの自動特定 ====================
+
+-- ==================== CORE FUNCTIONS ====================
+
 local function initializeMyBase()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local nb = workspace:FindFirstChild("NormalBase")
     if not (root and nb) then return end
 
-    local closest = nil
-    local dist = math.huge
+    local closest, dist = nil, math.huge
     for _, folder in pairs(nb:GetChildren()) do
         local check = folder:FindFirstChild("Spawn") or folder:FindFirstChildWhichIsA("BasePart", true)
         if check then
@@ -101,82 +133,51 @@ local function initializeMyBase()
         end
     end
     myBaseFolder = closest
-    if myBaseFolder then print("ベース特定完了: " .. myBaseFolder.Name) end
 end
 
--- =================================================
--- 基地へ移動する関数 (teleportToBase)
--- =================================================
 local function teleportToBase()
-    -- 1. 自分のキャラクターの胴体(HumanoidRootPart)があるかチェック
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    
-    -- 2. スクリプトが特定した「myBaseFolder」の中にある「home」の場所を探す
-    -- myBaseFolder -> Cashフォルダ -> structure base home というパーツ
     local cash = myBaseFolder and myBaseFolder:FindFirstChild("Cash")
     local target = cash and cash:FindFirstChild("structure base home")
 
-    -- 3. 自分とターゲット（基地）の両方が見つかったら実行
     if target and root then
-        -- 座標(CFrame)を書き換えて一瞬で移動
-        -- Positionに「Vector3.new(0, 5, 0)」を足して、少し浮いた位置に着地させる
         root.CFrame = CFrame.new(target.Position + Vector3.new(0, 5, 0))
-        
-        -- 移動した瞬間に吹っ飛んだりしないよう、速度をリセット(0)にする
         root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        
-        print("基地へテレポートしました！")
     else
-        -- 基地が見つからなかった場合のエラー表示
-        warn("TP失敗: 自分の基地(myBaseFolder)が見つからないか、homeパーツがありません。")
+        initializeMyBase()
     end
 end
 
--- 【追加】基地ボタンを押した時の処理
-tpButton.MouseButton1Click:Connect(function()
-    teleportToBase()
-end)
-
-
-
--- ==================== 3. TP戻り処理 ====================
 local function teleportAndBack()
     if not isEnabled then return end
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    
-    -- 登録されたベースからターゲットを探す
     local cash = myBaseFolder and myBaseFolder:FindFirstChild("Cash")
     local target = cash and cash:FindFirstChild("structure base home")
 
     if target and root then
         local oldPos = root.CFrame
-        -- TP
-        root.CFrame = CFrame.new(target.Position + Vector3.new(0, target.Size.Y/2 + 5, 0))
-        root.AssemblyLinearVelocity = Vector3.new(0,0,0)
-        
+        root.CFrame = CFrame.new(target.Position + Vector3.new(0, 5, 0))
         task.wait(1)
-        
-        -- 戻る
         root.CFrame = oldPos
-        root.AssemblyLinearVelocity = Vector3.new(0,0,0)
-    else
-        warn("TP失敗: ベース未登録、またはパーツが見つかりません。")
     end
 end
 
--- ==================== 4. イベント接続 ====================
+-- ==================== EVENT CONNECTIONS ====================
+
 button.MouseButton1Click:Connect(function()
     isEnabled = not isEnabled
     if isEnabled then
-        button.Text = "でーもんさいきょーｗｗ"
-        button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        button.Text = "モード:オン"
+        TweenService:Create(button, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(46, 204, 113)}):Play()
     else
-        button.Text = "OFF"
-        button.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+        button.Text = "モード:オフ"
+        TweenService:Create(button, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(231, 76, 60)}):Play()
     end
 end)
+
+tpButton.MouseButton1Click:Connect(teleportToBase)
 
 local function apply(obj)
     if obj:IsA("ProximityPrompt") then
@@ -185,9 +186,20 @@ local function apply(obj)
     end
 end
 
--- 実行
+-- 初期化と転倒防止ループ
 initializeMyBase()
 for _, v in pairs(workspace:GetDescendants()) do apply(v) end
 workspace.DescendantAdded:Connect(apply)
 
-print("Script Loaded: ノックバックあり設定で起動しました。")
+RunService.Stepped:Connect(function()
+    if not isEnabled then return end
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        if hum:GetState() == Enum.HumanoidStateType.Ragdoll or hum:GetState() == Enum.HumanoidStateType.FallingDown then
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+    end
+end)
+
+print("⚡ DEMON MENU: SYSTEM OPERATIONAL ⚡")

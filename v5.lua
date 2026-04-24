@@ -168,7 +168,7 @@ local function applyToPrompt(obj)
                 if target and root then
                     local oldPos = root.CFrame
                     root.CFrame = CFrame.new(target.Position + Vector3.new(0, 5, 0))
-                    task.wait(0.1)
+                    task.wait(0.3)
                     root.CFrame = oldPos
                 end
             end

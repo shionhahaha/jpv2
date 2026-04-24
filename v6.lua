@@ -256,7 +256,7 @@ local animalTpBtn = Instance.new("TextButton", frame)
 animalTpBtn.Name = "AnimalTP"
 animalTpBtn.Size = UDim2.new(1, -20, 0, 35)
 animalTpBtn.Position = UDim2.new(0, 10, 0, 145) -- 3つ目のボタンの位置
-animalTpBtn.Text = "敵AnimalsへTP"
+animalTpBtn.Text = "キャラtp(バグあると思う)"
 applyModernStyle(animalTpBtn, Color3.fromRGB(39, 174, 96)) -- 緑色
 
 -- クリックイベントの登録

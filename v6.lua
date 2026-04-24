@@ -107,21 +107,29 @@ RunService.Stepped:Connect(function()
     killAllAnimations(char)
 end)
 
--- 座標で「敵のベース敷地内（道の外）」か判定する関数
+-- 座標が指定されたベース（モデル）の範囲内にあるか判定する関数
 local function isInsideEnemyBase(targetPos)
     local nb = workspace:FindFirstChild("NormalBase")
     if not (nb and myBaseFolder) then return false end
     
     for _, base in pairs(nb:GetChildren()) do
-        -- 自分のベースは除外
-        if base ~= myBaseFolder then
-            -- 各ベースの基準パーツ（SpawnやFloor）を探す
-            local ref = base:FindFirstChild("Spawn") or base:FindFirstChild("Floor") or base:FindFirstChildWhichIsA("BasePart", true)
-            if ref then
-                -- 平面距離を計算
-                local dist = (Vector2.new(targetPos.X, targetPos.Z) - Vector2.new(ref.Position.X, ref.Position.Z)).Magnitude
-                -- 40スタッド以内ならベース内とみなす（道にいるキャラは通常これより遠い）
-                if dist < 40 then return true end
+        -- 自分のベース以外をチェック
+        if base ~= myBaseFolder and base:IsA("Model") then
+            -- モデル全体の中心座標とサイズを取得（GetBoundingBox）
+            local cf, size = base:GetBoundingBox()
+            local bPos = cf.Position
+            
+            -- 少し余裕を持たせるためにマージン（遊び）を追加
+            local margin = 2 
+            local minX, maxX = bPos.X - (size.X / 2) - margin, bPos.X + (size.X / 2) + margin
+            local minZ, maxZ = bPos.Z - (size.Z / 2) - margin, bPos.Z + (size.Z / 2) + margin
+            
+            -- デバッグ用：判定範囲をプリント（うまくいかない時に確認用）
+            -- print(string.format("Base %s Range: X(%.1f-%.1f) Z(%.1f-%.1f)", base.Name, minX, maxX, minZ, maxZ))
+
+            if targetPos.X >= minX and targetPos.X <= maxX and
+               targetPos.Z >= minZ and targetPos.Z <= maxZ then
+                return true
             end
         end
     end

@@ -1,170 +1,100 @@
--- =================================================
--- Anti-Trip + Full Animation Eraser (Modern UI Center)
--- =================================================
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local TweenService=game:GetService("TweenService")
+local player=Players.LocalPlayer
+local isEnabled=true
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local screenGui=Instance.new("ScreenGui")
+screenGui.Name="FastPromptGui"
+screenGui.ResetOnSpawn=false
+screenGui.Parent=player:WaitForChild("PlayerGui")
 
-local player = Players.LocalPlayer
-local antiTripConnection = nil
-local isEnabled = true
+local frame=Instance.new("Frame")
+frame.Size=UDim2.new(0,200,0,90)
+frame.Position=UDim2.new(0.5,-100,0.5,-45)
+frame.BackgroundColor3=Color3.fromRGB(25,25,25)
+frame.BorderSizePixel=0
+frame.Active=true
+frame.Draggable=true
+frame.Parent=screenGui
 
--- ==================== UI作成 ====================
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AntiTripGui"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
+Instance.new("UICorner",frame).CornerRadius=UDim.new(0,10)
+local stroke=Instance.new("UIStroke",frame)
+stroke.Color=Color3.fromRGB(50,50,50)
+stroke.Thickness=2
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 140, 0, 60)
--- 画面中央に配置
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true -- マウスで移動可能
-frame.Parent = screenGui
+local title=Instance.new("TextLabel",frame)
+title.Size=UDim2.new(1,0,0,30)
+title.BackgroundTransparency=1
+title.Text="PROXIMITY FAST"
+title.TextColor3=Color3.fromRGB(200,200,200)
+title.Font=Enum.Font.GothamBold
+title.TextSize=12
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = frame
+local btn=Instance.new("TextButton",frame)
+btn.Size=UDim2.new(1,-20,0,40)
+btn.Position=UDim2.new(0,10,0,35)
+btn.Font=Enum.Font.GothamBlack
+btn.TextSize=16
+btn.TextColor3=Color3.new(1,1,1)
+Instance.new("UICorner",btn).CornerRadius=UDim.new(0,8)
 
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, -20, 1, -20)
-button.Position = UDim2.new(0, 10, 0, 10)
-button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-button.Text = "Anti-Trip: ON"
-button.TextColor3 = Color3.new(1, 1, 1)
-button.TextScaled = true
-button.Font = Enum.Font.GothamBold
-button.Parent = frame
+local function stopAnims(char)
+local hum=char:FindFirstChildOfClass("Humanoid")
+if hum then
 
-local buttonCorner = Instance.new("UICorner")
-buttonCorner.CornerRadius = UDim.new(0, 6)
-buttonCorner.Parent = button
-
--- ==================== 徹底抹消関数 ====================
-local function killAllAnimations(char)
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    
-    -- 再生中のトラックを全部停止
-    for _, track in pairs(hum:GetPlayingAnimationTracks()) do
-        track:Stop(0)
-    end
-    
-    -- アニメーションデータ自体を空にする
-    for _, v in pairs(char:GetDescendants()) do
-        if v:IsA("Animation") then
-            v.AnimationId = ""
-        end
-    end
+for _,t in pairs(hum:GetPlayingAnimationTracks()) do t:Stop(0) end
 end
 
--- ==================== Anti-Trip 本体 ====================
-local function startAntiTrip()
-    if antiTripConnection then return end
-    
-    antiTripConnection = RunService.Stepped:Connect(function()
-        local char = player.Character
-        if not char then return end
-        
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not (root and hum) then return end
-
-        -- 1. 転倒ステートを即解除
-        local state = hum:GetState()
-        if state == Enum.HumanoidStateType.Ragdoll or 
-           state == Enum.HumanoidStateType.FallingDown or 
-           state == Enum.HumanoidStateType.PlatformStanding then
-            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
-
-        -- 2. 物理的な吹っ飛び防止 (ジャンプ以外)
-        local isJumping = hum.Jump or UserInputService:IsKeyDown(Enum.KeyCode.Space)
-        if not isJumping then
-            local vel = root.AssemblyLinearVelocity
-            -- 自由落下中でなければ、少し下方向に力を加えて地面に吸着させる
-            if state ~= Enum.HumanoidStateType.Freefall then
-                root.AssemblyLinearVelocity = Vector3.new(vel.X, -0.8, vel.Z)
-            end
-            root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-        end
-
-        -- 3. 外部のBodyVelocityなどの削除
-        for _, v in pairs(root:GetChildren()) do
-            if v:IsA("BodyVelocity") or v:IsA("BodyForce") or v:IsA("LinearVelocity") then
-                v:Destroy()
-            end
-        end
-
-        -- 4. アニメーション徹底停止 + 関節固定
-        local animate = char:FindFirstChild("Animate")
-        if animate then animate.Disabled = true end
-
-        killAllAnimations(char)
-
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("Motor6D") then
-                v.Enabled = true
-                v.Transform = CFrame.new() -- 直立姿勢にリセット
-            end
-        end
-    end)
+local anim=char:FindFirstChild("Animate")
+if anim then anim.Disabled=true end
 end
 
-local function stopAntiTrip()
-    if antiTripConnection then
-        antiTripConnection:Disconnect()
-        antiTripConnection = nil
-    end
-    
-    local char = player.Character
-    if char then
-        local animate = char:FindFirstChild("Animate")
-        if animate then
-            animate.Disabled = false -- 歩行アニメを戻す
-        end
-    end
+RunService.Stepped:Connect(function()
+if not isEnabled then return end
+local char=player.Character
+local hum=char and char:FindFirstChildOfClass("Humanoid")
+if hum then
+local s=hum:GetState()
+if s==Enum.HumanoidStateType.Ragdoll or s==Enum.HumanoidStateType.FallingDown or s==Enum.HumanoidStateType.PlatformStanding then
+hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 end
 
--- ==================== ボタントグル ====================
-button.MouseButton1Click:Connect(function()
-    isEnabled = not isEnabled
-    
-    if isEnabled then
-        startAntiTrip()
-        button.Text = "Anti-Trip: ON"
-        button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-    else
-        stopAntiTrip()
-        button.Text = "Anti-Trip: OFF"
-        button.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-    end
+stopAnims(char)
+end
 end)
 
--- 初期起動
-startAntiTrip()
-print("Anti-Trip & Animation Eraser Loaded (Centered UI)!")
--- =================================================
--- ProximityPrompt 0秒化（一瞬でつかめる）コード
--- =================================================
+local function updateUI()
+if isEnabled then
+btn.Text="STATUS: ON"
+btn.BackgroundColor3=Color3.fromRGB(45,180,100)
+else
+btn.Text="STATUS: OFF"
+btn.BackgroundColor3=Color3.fromRGB(180,50,50)
+local char=player.Character
+local anim=char and char:FindFirstChild("Animate")
+if anim then anim.Disabled=false end
+end
+end
+updateUI()
 
-local function makeFast(obj)
-    if obj:IsA("ProximityPrompt") then
-        obj.HoldDuration = 0
-    end
+local originals={}
+local function fast(obj)
+if obj:IsA("ProximityPrompt")then
+if not originals[obj]then originals[obj]=obj.HoldDuration end
+task.spawn(function()
+while obj.Parent do
+obj.HoldDuration=isEnabled and 0.5 or originals[obj]
+task.wait(0.5)
+end
+end)
+end
 end
 
--- 1. ゲーム起動時に、今あるプロンプトをすべて0秒にする
-for _, v in pairs(workspace:GetDescendants()) do
-    makeFast(v)
-end
+for _,v in pairs(workspace:GetDescendants())do fast(v)end
+workspace.DescendantAdded:Connect(fast)
 
--- 2. これから新しく出現するプロンプトも、出た瞬間に0秒にする
-workspace.DescendantAdded:Connect(makeFast)
-
-print("Fast Prompt Loaded: すべての長押しを0秒にしました")
+btn.MouseButton1Click:Connect(function()
+isEnabled=not isEnabled
+updateUI()
+end)

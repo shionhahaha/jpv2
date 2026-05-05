@@ -32,7 +32,7 @@ local function initializeMyBaseAndWipeLasers()
     myBaseFolder = closest
 
     if myBaseFolder then
-        -- ★追加: 自分の基地の「PlotBlock」を探して全体TP先として保存
+        
         local purchases = myBaseFolder:FindFirstChild("Purchases")
         if purchases then
             local plotBlock = purchases:FindFirstChild("PlotBlock")
@@ -44,32 +44,9 @@ local function initializeMyBaseAndWipeLasers()
                 end
             end
         end
-
-        -- 他人の基地のレーザーを無効化
-        for _, base in pairs(nb:GetChildren()) do
-            if base ~= myBaseFolder then
-                for _, obj in pairs(base:GetDescendants()) do
-                    if obj.Name == "Laser" then
-                        local targets = obj:IsA("BasePart") and {obj} or obj:GetDescendants()
-                        for _, p in pairs(targets) do
-                            if p:IsA("BasePart") then
-                                p.CanCollide, p.CanTouch, p.CanQuery = false, false, false
-                                p.Transparency = 1
-                                for _, c in pairs(p:GetChildren()) do
-                                    if c:IsA("TouchTransmitter") or c.ClassName == "TouchInterest" then
-                                        c:Destroy()
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
     end
 end
 
--- 2. 全体ループTP処理（心臓部）
 RunService.Heartbeat:Connect(function()
     if isEnabled and isFullBodyLoop and savedCFrame then
         local currentChar = player.Character
@@ -81,7 +58,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 3. キャラTP（敵地スキャン）ループ
 RunService.Heartbeat:Connect(function()
     if isEnabled and isTpLooping and currentTargetRoot and currentTargetRoot.Parent then
         local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -115,13 +91,12 @@ local function applyToPrompt(obj)
     if obj:IsA("ProximityPrompt") then obj.HoldDuration = 0 end
 end
 
--- GUI作成
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 screenGui.Name = "DemonUltraGui"
 screenGui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 200, 0, 290) -- サイズを少し大きく調整
+frame.Size = UDim2.new(0, 200, 0, 290) 
 frame.Position = UDim2.new(0.5, -100, 0.5, -145)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 15)
@@ -259,4 +234,47 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-print("でーもん完全版：全体ループTP・敵スキャン実装完了！ｗ")
+print("でーもん修正対応版ｗ")
+-- 設定値
+local NEW_TEXT_SIZE = 25
+local INTERVAL = 2 -- 何秒ごとに更新するか（2秒くらいが負荷が少なくておすすめ）
+
+print("ループ更新...")
+print("ベースタイムesp")
+
+while true do
+    local normalBase = workspace:FindFirstChild("NormalBase")
+    
+    if normalBase then
+        for _, numModel in pairs(normalBase:GetChildren()) do
+            -- 特定のパスを辿る
+            local purchases = numModel:FindFirstChild("Purchases")
+            local plotBlock = purchases and purchases:FindFirstChild("PlotBlock")
+            local main = plotBlock and plotBlock:FindFirstChild("Main")
+            local targetGui = main and main:FindFirstChild("BillboardGui")
+
+            -- 見つかった場合のみ設定を上書き
+            if targetGui and targetGui:IsA("BillboardGui") then
+                -- 遠くから＆壁越しに見える設定
+                if not targetGui.AlwaysOnTop then
+                    targetGui.AlwaysOnTop = true
+                    targetGui.MaxDistance = math.huge
+                    targetGui.Size = UDim2.new(0, 150, 0, 50)
+                end
+
+                -- 中にある TextLabel を調整
+                for _, child in pairs(targetGui:GetChildren()) do
+                    if child:IsA("TextLabel") then
+                        if child.TextSize ~= NEW_TEXT_SIZE then
+                            child.TextSize = NEW_TEXT_SIZE
+                            child.Size = UDim2.new(1, 0, 1, 0)
+                            child.Visible = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    task.wait(INTERVAL) 
+end

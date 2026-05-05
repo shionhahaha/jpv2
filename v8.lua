@@ -11,7 +11,12 @@ local isEnabled = true
 local isTpLooping = false
 local currentTargetRoot = nil
 local isAutoEnabled = false
---きちtp
+
+-- ★追加: 全体ループ用の変数
+local isFullBodyLoop = false 
+local savedCFrame = nil 
+
+-- 1. 自分の基地を特定し、レーザー無効化、さらに「全体TP用の座標」を取得
 local function initializeMyBaseAndWipeLasers()
     local nb = workspace:FindFirstChild("NormalBase")
     if not (root and nb) then return end
@@ -27,6 +32,20 @@ local function initializeMyBaseAndWipeLasers()
     myBaseFolder = closest
 
     if myBaseFolder then
+        -- ★追加: 自分の基地の「PlotBlock」を探して全体TP先として保存
+        local purchases = myBaseFolder:FindFirstChild("Purchases")
+        if purchases then
+            local plotBlock = purchases:FindFirstChild("PlotBlock")
+            if plotBlock then
+                local targetPart = plotBlock:IsA("BasePart") and plotBlock or plotBlock:FindFirstChildWhichIsA("BasePart", true)
+                if targetPart then
+                    savedCFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+                    print("全体TP座標を設定しました")
+                end
+            end
+        end
+
+        -- 他人の基地のレーザーを無効化
         for _, base in pairs(nb:GetChildren()) do
             if base ~= myBaseFolder then
                 for _, obj in pairs(base:GetDescendants()) do
@@ -50,6 +69,19 @@ local function initializeMyBaseAndWipeLasers()
     end
 end
 
+-- 2. 全体ループTP処理（心臓部）
+RunService.Heartbeat:Connect(function()
+    if isEnabled and isFullBodyLoop and savedCFrame then
+        local currentChar = player.Character
+        local myRoot = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
+        if myRoot then
+            myRoot.CFrame = savedCFrame
+            myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        end
+    end
+end)
+
+-- 3. キャラTP（敵地スキャン）ループ
 RunService.Heartbeat:Connect(function()
     if isEnabled and isTpLooping and currentTargetRoot and currentTargetRoot.Parent then
         local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -62,13 +94,14 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+-- 敵基地判定関数
 local function isInsideEnemyBase(targetPos)
     local nb = workspace:FindFirstChild("NormalBase")
     if not (nb and myBaseFolder) then return false end
     for _, base in pairs(nb:GetChildren()) do
         if base ~= myBaseFolder and base:IsA("Model") then
             local cf, size = base:GetBoundingBox()
-            local bPos, m = cf.Position, 2
+            local bPos, m = cf.Position, 5
             if targetPos.X >= bPos.X - size.X/2 - m and targetPos.X <= bPos.X + size.X/2 + m and
                targetPos.Z >= bPos.Z - size.Z/2 - m and targetPos.Z <= bPos.Z + size.Z/2 + m then
                 return true
@@ -79,18 +112,17 @@ local function isInsideEnemyBase(targetPos)
 end
 
 local function applyToPrompt(obj)
-    if obj:IsA("ProximityPrompt") then
-        obj.HoldDuration = 0
-    end
+    if obj:IsA("ProximityPrompt") then obj.HoldDuration = 0 end
 end
 
+-- GUI作成
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 screenGui.Name = "DemonUltraGui"
 screenGui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 200, 0, 240)
-frame.Position = UDim2.new(0.5, -100, 0.5, -120)
+frame.Size = UDim2.new(0, 200, 0, 290) -- サイズを少し大きく調整
+frame.Position = UDim2.new(0.5, -100, 0.5, -145)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 15)
 frame.Active, frame.Draggable = true, true
@@ -101,6 +133,7 @@ title.Text = "でーもんさいきょーｗｗ🤓"
 title.TextColor3 = Color3.new(1, 1, 1)
 title.Font = Enum.Font.GothamBlack
 title.BackgroundTransparency = 1
+title.TextSize = 16
 
 local function applyBtnStyle(btn, color)
     local c = Instance.new("UICorner", btn)
@@ -135,6 +168,13 @@ autoBtn.Position = UDim2.new(0, 10, 0, 195)
 autoBtn.Text = "おーと:オフ"
 applyBtnStyle(autoBtn, Color3.fromRGB(127, 140, 141))
 
+local fullLoopBtn = Instance.new("TextButton", frame)
+fullLoopBtn.Size = UDim2.new(1, -20, 0, 35)
+fullLoopBtn.Position = UDim2.new(0, 10, 0, 245)
+fullLoopBtn.Text = "全体ループTP:オフ"
+applyBtnStyle(fullLoopBtn, Color3.fromRGB(127, 140, 141))
+
+-- ボタンイベント
 toggleBtn.MouseButton1Click:Connect(function()
     isEnabled = not isEnabled
     toggleBtn.Text = isEnabled and "モード:オン" or "モード:オフ"
@@ -156,44 +196,35 @@ animalTpBtn.MouseButton1Click:Connect(function()
         animalTpBtn.Text = "キャラtp:オフ"
         animalTpBtn.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
     else
+        initializeMyBaseAndWipeLasers()
         local anims = workspace:FindFirstChild("Animals")
         local targets = {}
         if anims then
             for _, obj in pairs(anims:GetChildren()) do
                 if obj:IsA("Model") then
                     local name = obj.Name
-                    
-                    local isForbidden = (name == player.Name) 
-                                     or name:find("ヌッピーニ") 
-                                     or name:find("寿司") 
-                                     or name:find("ぬびりーに")
-                    
-                    if isForbidden then
-                        
-                        print("論外: " .. name)
-                    else
+                    local isForbidden = (name == player.Name) or name:find("ヌッピーニ") or name:find("寿司") or name:find("ぬびりーに")
+                    if not isForbidden then
                         local p = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart")
-                        if p and isInsideEnemyBase(p.Position) then 
-                            table.insert(targets, p) 
-                        end
+                        if p and isInsideEnemyBase(p.Position) then table.insert(targets, p) end
                     end
                 end
             end
         end
-
         if #targets > 0 then
-            local selected = targets[math.random(1, #targets)]
-            
-            print("TP成功: " .. selected.Parent.Name .. " にtp")
-            
-            currentTargetRoot = selected
+            currentTargetRoot = targets[math.random(1, #targets)]
             isTpLooping = true
-            animalTpBtn.Text = "らんだむtp"
+            animalTpBtn.Text = "らんだむtp中"
             animalTpBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
-        else
-            warn(" キャラがいません")
         end
     end
+end)
+
+fullLoopBtn.MouseButton1Click:Connect(function()
+    if not savedCFrame then initializeMyBaseAndWipeLasers() end
+    isFullBodyLoop = not isFullBodyLoop
+    fullLoopBtn.Text = isFullBodyLoop and "全体ループTP:オン" or "全体ループTP:オフ"
+    fullLoopBtn.BackgroundColor3 = isFullBodyLoop and Color3.fromRGB(231, 76, 60) or Color3.fromRGB(127, 140, 141)
 end)
 
 autoBtn.MouseButton1Click:Connect(function()
@@ -202,60 +233,30 @@ autoBtn.MouseButton1Click:Connect(function()
     autoBtn.BackgroundColor3 = isAutoEnabled and Color3.fromRGB(155, 89, 182) or Color3.fromRGB(127, 140, 141)
 end)
 
+-- 初期化とループ
 initializeMyBaseAndWipeLasers()
 for _, v in pairs(workspace:GetDescendants()) do applyToPrompt(v) end
 workspace.DescendantAdded:Connect(applyToPrompt)
 
-RunService.Stepped:Connect(function()
-    if not isEnabled then return end
-    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        local state = hum:GetState()
-        if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown then
-            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
-    end
-end)
-
-local function killAllAnimations(char)
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    for _, track in pairs(hum:GetPlayingAnimationTracks()) do track:Stop(0) end
+local function killAllAnimations(c)
+    local hum = c:FindFirstChildOfClass("Humanoid")
+    if hum then for _, track in pairs(hum:GetPlayingAnimationTracks()) do track:Stop(0) end end
 end
 
 RunService.Stepped:Connect(function()
     if not isEnabled then return end
-    local char = player.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not (root and hum) then return end
-
-    
-    local state = hum:GetState()
-    if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown or state == Enum.HumanoidStateType.PlatformStanding then
-        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-    end
-    
-    -- アニメーション停止
-    local animate = char:FindFirstChild("Animate")
-    if animate then animate.Disabled = true end
-    killAllAnimations(char)
-end)
-
-
-RunService.Stepped:Connect(function()
-    if not isEnabled then return end
-    local char = player.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local c = player.Character
+    if not c then return end
+    local hum = c:FindFirstChildOfClass("Humanoid")
     if hum then
         local state = hum:GetState()
-        if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown then
+        if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown or state == Enum.HumanoidStateType.PlatformStanding then
             hum:ChangeState(Enum.HumanoidStateType.GettingUp)
         end
-        local animate = char:FindFirstChild("Animate")
+        local animate = c:FindFirstChild("Animate")
         if animate then animate.Disabled = true end
-        killAllAnimations(char)
+        killAllAnimations(c)
     end
 end)
-print("でーもんはぶはつどう！")
+
+print("でーもん完全版：全体ループTP・敵スキャン実装完了！ｗ")

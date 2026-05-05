@@ -202,7 +202,6 @@ autoBtn.MouseButton1Click:Connect(function()
     autoBtn.BackgroundColor3 = isAutoEnabled and Color3.fromRGB(155, 89, 182) or Color3.fromRGB(127, 140, 141)
 end)
 
---プロンプトloop
 initializeMyBaseAndWipeLasers()
 for _, v in pairs(workspace:GetDescendants()) do applyToPrompt(v) end
 workspace.DescendantAdded:Connect(applyToPrompt)
@@ -218,4 +217,45 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-print("でーもんはぶはつどう！ｗ")
+local function killAllAnimations(char)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    for _, track in pairs(hum:GetPlayingAnimationTracks()) do track:Stop(0) end
+end
+
+RunService.Stepped:Connect(function()
+    if not isEnabled then return end
+    local char = player.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not (root and hum) then return end
+
+    
+    local state = hum:GetState()
+    if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown or state == Enum.HumanoidStateType.PlatformStanding then
+        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+    
+    -- アニメーション停止
+    local animate = char:FindFirstChild("Animate")
+    if animate then animate.Disabled = true end
+    killAllAnimations(char)
+end)
+
+
+RunService.Stepped:Connect(function()
+    if not isEnabled then return end
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        local state = hum:GetState()
+        if state == Enum.HumanoidStateType.Ragdoll or state == Enum.HumanoidStateType.FallingDown then
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+        local animate = char:FindFirstChild("Animate")
+        if animate then animate.Disabled = true end
+        killAllAnimations(char)
+    end
+end)
+print("でーもんはぶはつどう！")

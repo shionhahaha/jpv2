@@ -32,7 +32,6 @@ local function initializeMyBaseAndWipeLasers()
     myBaseFolder = closest
 
     if myBaseFolder then
-        
         local purchases = myBaseFolder:FindFirstChild("Purchases")
         if purchases then
             local plotBlock = purchases:FindFirstChild("PlotBlock")
@@ -87,8 +86,17 @@ local function isInsideEnemyBase(targetPos)
     return false
 end
 
+-- ★【超軽量化】Prompt専用の監視・固定処理
 local function applyToPrompt(obj)
-    if obj:IsA("ProximityPrompt") then obj.HoldDuration = 0 end
+    if obj:IsA("ProximityPrompt") then
+        obj.HoldDuration = 0
+        -- ゲーム側が秒数を書き換えた（戻した）瞬間だけループして0にリセットする
+        obj:GetPropertyChangedSignal("HoldDuration"):Connect(function()
+            if isEnabled and obj.HoldDuration ~= 0 then
+                obj.HoldDuration = 0
+            end
+        end)
+    end
 end
 
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
@@ -146,7 +154,7 @@ applyBtnStyle(autoBtn, Color3.fromRGB(127, 140, 141))
 local fullLoopBtn = Instance.new("TextButton", frame)
 fullLoopBtn.Size = UDim2.new(1, -20, 0, 35)
 fullLoopBtn.Position = UDim2.new(0, 10, 0, 245)
-fullLoopBtn.Text = "全体ループTP:オフ"
+fullLoopBtn.Text = "baseloop:オフ"
 applyBtnStyle(fullLoopBtn, Color3.fromRGB(127, 140, 141))
 
 -- ボタンイベント
@@ -198,7 +206,7 @@ end)
 fullLoopBtn.MouseButton1Click:Connect(function()
     if not savedCFrame then initializeMyBaseAndWipeLasers() end
     isFullBodyLoop = not isFullBodyLoop
-    fullLoopBtn.Text = isFullBodyLoop and "全体ループTP:オン" or "全体ループTP:オフ"
+    fullLoopBtn.Text = isFullBodyLoop and "baseloop:オン" or "baseloop:オフ"
     fullLoopBtn.BackgroundColor3 = isFullBodyLoop and Color3.fromRGB(231, 76, 60) or Color3.fromRGB(127, 140, 141)
 end)
 
@@ -208,7 +216,7 @@ autoBtn.MouseButton1Click:Connect(function()
     autoBtn.BackgroundColor3 = isAutoEnabled and Color3.fromRGB(155, 89, 182) or Color3.fromRGB(127, 140, 141)
 end)
 
--- 初期化とループ
+-- 初期化とイベント接続
 initializeMyBaseAndWipeLasers()
 for _, v in pairs(workspace:GetDescendants()) do applyToPrompt(v) end
 workspace.DescendantAdded:Connect(applyToPrompt)
@@ -235,34 +243,28 @@ RunService.Stepped:Connect(function()
 end)
 
 print("でーもん修正対応版ｗ")
--- 設定値
 local NEW_TEXT_SIZE = 25
-local INTERVAL = 2 -- 何秒ごとに更新するか（2秒くらいが負荷が少なくておすすめ）
+local INTERVAL = 2 
 
 print("ループ更新...")
-print("ベースタイムesp")
+print("ベースタイムespスタート")
 
 while true do
     local normalBase = workspace:FindFirstChild("NormalBase")
-    
     if normalBase then
         for _, numModel in pairs(normalBase:GetChildren()) do
-            -- 特定のパスを辿る
             local purchases = numModel:FindFirstChild("Purchases")
             local plotBlock = purchases and purchases:FindFirstChild("PlotBlock")
             local main = plotBlock and plotBlock:FindFirstChild("Main")
             local targetGui = main and main:FindFirstChild("BillboardGui")
 
-            -- 見つかった場合のみ設定を上書き
             if targetGui and targetGui:IsA("BillboardGui") then
-                -- 遠くから＆壁越しに見える設定
                 if not targetGui.AlwaysOnTop then
                     targetGui.AlwaysOnTop = true
                     targetGui.MaxDistance = math.huge
                     targetGui.Size = UDim2.new(0, 150, 0, 50)
                 end
 
-                -- 中にある TextLabel を調整
                 for _, child in pairs(targetGui:GetChildren()) do
                     if child:IsA("TextLabel") then
                         if child.TextSize ~= NEW_TEXT_SIZE then
